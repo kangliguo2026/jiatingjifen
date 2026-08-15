@@ -9,8 +9,5 @@
   },
   "dependencies": {
     "@netlify/blobs": "^7.4.0"
-  },
-  "devDependencies": {
-    "netlify-cli": "^21.0.0"
   }
 }
