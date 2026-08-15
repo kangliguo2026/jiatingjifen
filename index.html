@@ -416,11 +416,11 @@ body {
     </div>
   </div>
   <div class="points-display">
-    <div class="points-label">当前积分余额</div>
+    <div class="points-label" id="pointsLabel">当日积分余额</div>
     <div class="points-value"><span id="totalPoints">0</span><span class="unit">分</span></div>
-    <div class="points-stats">
-      <span>本周奖励 <strong id="weekReward">0</strong></span>
-      <span>本周惩罚 <strong id="weekPunish">0</strong></span>
+    <div class="points-stats" id="pointsStats">
+      <span>本日奖励 <strong id="weekReward">0</strong></span>
+      <span>本日惩罚 <strong id="weekPunish">0</strong></span>
     </div>
   </div>
 </div>
@@ -653,20 +653,21 @@ function renderDate() {
     `${d.getMonth()+1}月${d.getDate()}日 周${dowNames[d.getDay()]}`;
 }
 
+let curPage = 'reward';
+
 function updatePointsDisplay() {
-  document.getElementById('totalPoints').textContent = state.balance;
+  const day = getDayData();
+  const dayReward = sumObj(day.rewards);
+  const dayPunish = sumObj(day.punishes);
+  const dayNet = dayReward + dayPunish; // 惩罚为负数，可为负余额
+  const isDayPage = curPage === 'reward' || curPage === 'punish';
+
+  document.getElementById('pointsLabel').textContent = isDayPage ? '当日积分余额' : '积分总额';
+  document.getElementById('totalPoints').textContent = isDayPage ? dayNet : state.balance;
+  document.getElementById('pointsStats').style.display = isDayPage ? 'flex' : 'none';
+  document.getElementById('weekReward').textContent = '+' + dayReward;
+  document.getElementById('weekPunish').textContent = dayPunish;
   document.getElementById('mallPoints').textContent = state.balance;
-  // 本周（以最近7天计）
-  let weekReward = 0, weekPunish = 0;
-  for (let i = 0; i < 7; i++) {
-    const day = state.days[getDateStr(-i)];
-    if (day) {
-      weekReward += sumObj(day.rewards);
-      weekPunish += sumObj(day.punishes);
-    }
-  }
-  document.getElementById('weekReward').textContent = '+' + weekReward;
-  document.getElementById('weekPunish').textContent = weekPunish;
 }
 
 const sumObj = (obj) => Object.values(obj || {}).reduce(
@@ -716,6 +717,7 @@ function updateDailySummary() {
   set('dayReward2', '+' + reward);
   set('dayPunish2', punish);
   set('dayNet2', (net >= 0 ? '+' : '') + net);
+  updatePointsDisplay();
 }
 
 // ===== 折叠分组 =====
@@ -1127,10 +1129,12 @@ async function changePassword() {
 
 // ===== 页面切换 =====
 function switchPage(page) {
+  curPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
   document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+  updatePointsDisplay();
   window.scrollTo(0, 0);
 }
 
