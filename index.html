@@ -520,25 +520,109 @@ body {
 <div class="toast" id="toast"></div>
 
 <script>
-// ===== API =====
-let token = localStorage.getItem('jifen_token') || '';
+// ===== 纯前端本地存储 =====
+// localStorage keys: jifen_auth, jifen_config, jifen_days, jifen_records, jifen_session
 
-async function api(path, body) {
-  const res = await fetch('/api/' + path, {
-    method: body !== undefined ? 'POST' : 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: 'Bearer ' + token } : {}),
-    },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  const data = await res.json().catch(() => ({}));
-  if (res.status === 401 && path !== 'login') {
-    showLogin(false);
-    throw new Error(data.error || '请重新登录');
+const LS = {
+  get(key, fallback) {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
+    catch { return fallback; }
+  },
+  set(key, val) { localStorage.setItem(key, JSON.stringify(val)); },
+  del(key) { localStorage.removeItem(key); },
+};
+
+// ===== 默认积分配置（来自 Excel：喜宝家庭奖惩积分表）=====
+const DEFAULT_CONFIG = {
+  rewards: [
+    { category: '生活习惯', items: [
+      { name: '早上按时起床', points: 1 },
+      { name: '独立刷牙洗脸', points: 1 },
+      { name: '吃饭不挑食', points: 1 },
+      { name: '自己收拾餐具', points: 1 },
+      { name: '自己穿衣服', points: 1 },
+      { name: '9点半前上床睡觉', points: 1 },
+    ]},
+    { category: '学习习惯', items: [
+      { name: '及时整理桌面/书包', points: 1 },
+      { name: '作业认真思考，字迹工整', points: 1 },
+      { name: '作业不拖延', points: 1 },
+      { name: '上课举手', points: 1 },
+      { name: '正确回答老师提问', points: 2 },
+      { name: '老师群里表扬一次', points: 4 },
+      { name: '每天识字5个', points: 1 },
+      { name: '数学试卷1张', points: 3 },
+      { name: '数学作业全对', points: 2 },
+      { name: '古诗背诵1首', points: 5 },
+      { name: '书法写字1页', points: 2 },
+      { name: '获奖状、奖杯、奖牌', points: 20 },
+    ]},
+    { category: '兴趣拓展', items: [
+      { name: '参加跳舞得分10分', points: 2 },
+      { name: '跳绳打卡1次', points: 2 },
+      { name: '小区跑步2圈', points: 2 },
+    ]},
+    { category: '家庭品行', items: [
+      { name: '对家人朋友有礼貌', points: 2 },
+      { name: '洗碗/擦桌子/拖地', points: 2 },
+      { name: '其他表现优秀的情况', points: null },
+    ]},
+  ],
+  punishes: [
+    { category: '生活习惯', items: [
+      { name: '饭前便后不洗手', points: -1 },
+      { name: '乱扔衣服鞋子', points: -1 },
+      { name: '故意损坏物品', points: -2 },
+      { name: '个人物品乱丢乱放', points: -1 },
+    ]},
+    { category: '学习习惯', items: [
+      { name: '书桌脏乱差', points: -2 },
+      { name: '作业本乱涂乱画', points: -1 },
+      { name: '作业拖延', points: -2 },
+      { name: '学校忘记东西', points: -2 },
+    ]},
+    { category: '行为品德', items: [
+      { name: '学校打人', points: -5 },
+      { name: '说谎话', points: -5 },
+      { name: '表现差，老师找家长', points: -10 },
+      { name: '给别人取外号或嘲笑别人', points: -5 },
+      { name: '在公共场合乱跑', points: -2 },
+      { name: '私拿别人物品', points: -5 },
+      { name: '未经允许到别人家', points: -5 },
+      { name: '在家打人，骂人', points: -5 },
+      { name: '不讲道理发脾气', points: -2 },
+      { name: '其他表现不好的情况', points: null },
+    ]},
+  ],
+  mall: [
+    { name: '零食兑换券', desc: '自选一个喜欢的零食或饮料', points: 50, icon: '🍬' },
+    { name: '文具兑换券', desc: '兑换文具1个', points: 50, icon: '✏️' },
+    { name: '半小时电视/游戏', desc: '作业完成后可以玩', points: 50, icon: '🎮' },
+    { name: '自选玩具券', desc: '自选60元内玩具', points: 100, icon: '🧸' },
+    { name: '周末计划券', desc: '制定周末计划，决定就餐地点', points: 100, icon: '📋' },
+    { name: '户外活动券', desc: '爬山/采摘/野炊/露营等', points: 100, icon: '🏞️' },
+    { name: '到姑姑家玩', desc: '和哥哥姐姐一起玩', points: 300, icon: '👨‍👩‍👧‍👦' },
+    { name: '实现一个愿望', desc: '物质类200元以内', points: 300, icon: '🌟' },
+    { name: '其他自提要求', desc: '视情况而定', points: null, icon: '🎁' },
+  ],
+};
+
+// ===== 积分计算（实时汇总）=====
+function sumObj(obj) {
+  return Object.values(obj || {}).reduce((a, v) => (typeof v === 'number' && Number.isFinite(v) ? a + v : a), 0);
+}
+
+function computeBalance() {
+  const auth = LS.get('jifen_auth', null);
+  const initial = auth ? (auth.initial || 0) : 0;
+  const days = LS.get('jifen_days', {});
+  let daySum = 0;
+  for (const d of Object.values(days)) {
+    daySum += sumObj(d.rewards) + sumObj(d.punishes);
   }
-  if (!res.ok) throw new Error(data.error || '请求失败');
-  return data;
+  const records = LS.get('jifen_records', []);
+  const spent = records.reduce((a, r) => a + (Number(r.points) || 0), 0);
+  return initial + daySum - spent;
 }
 
 // ===== State =====
@@ -554,10 +638,7 @@ let state = {
 
 const dowNames = ['日','一','二','三','四','五','六'];
 
-function getTodayStr() {
-  const d = new Date();
-  return fmtDate(d);
-}
+function getTodayStr() { return fmtDate(new Date()); }
 function fmtDate(d) {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
@@ -568,47 +649,42 @@ function getDateStr(offset) {
 }
 
 // ===== 启动 =====
-async function boot() {
-  try {
-    const st = await api('status');
-    if (st.loggedIn) {
-      await loadAll();
-      showApp();
-    } else {
-      showLogin(st.needSetup);
-    }
-  } catch (e) {
-    document.getElementById('loadingMask').textContent = '连接失败：' + e.message;
+function boot() {
+  const auth = LS.get('jifen_auth', null);
+  if (!auth) {
+    showLogin(true);
+  } else if (LS.get('jifen_session', false)) {
+    loadAll();
+    showApp();
+  } else {
+    showLogin(false);
   }
 }
 
-async function loadAll() {
-  const data = await api('data');
-  state.config = data.config;
-  state.balance = data.balance;
-  state.records = data.records || [];
-  state.days = data.days || {};
-  state.breakdown = data.breakdown || { initial: 0, daySum: 0, spent: 0 };
+function loadAll() {
+  state.config = LS.get('jifen_config', DEFAULT_CONFIG);
+  state.days = LS.get('jifen_days', {});
+  state.records = LS.get('jifen_records', []);
+  state.balance = computeBalance();
   renderAll();
 }
 
 function renderBreakdown() {
-  const b = state.breakdown || {};
-  document.getElementById('initialInput').value = b.initial ?? 0;
+  const auth = LS.get('jifen_auth', {});
+  document.getElementById('initialInput').value = auth.initial ?? 0;
 }
 
 async function saveInitial() {
   const v = Number(document.getElementById('initialInput').value);
   if (!Number.isFinite(v)) { showToast('❌ 请输入有效数字'); return; }
-  try {
-    const r = await api('initial', { initial: v });
-    state.balance = r.balance;
-    state.breakdown.initial = v;
-    renderBreakdown();
-    updatePointsDisplay();
-    renderMall();
-    showToast('✅ 初始积分已修正');
-  } catch (e) { showToast('❌ ' + e.message); }
+  const auth = LS.get('jifen_auth', {});
+  auth.initial = v;
+  LS.set('jifen_auth', auth);
+  state.balance = computeBalance();
+  renderBreakdown();
+  updatePointsDisplay();
+  renderMall();
+  showToast('✅ 初始积分已修正');
 }
 
 function renderAll() {
@@ -636,29 +712,34 @@ function showLogin(setup) {
   document.getElementById('loginBtn').textContent = setup ? '初始化' : '进入';
 }
 
-async function doLogin() {
+function doLogin() {
   const pw = document.getElementById('pwInput').value.trim();
   const err = document.getElementById('loginErr');
   err.textContent = '';
-  try {
-    if (needSetup) {
-      const bal = document.getElementById('initBalance').value || '0';
-      await api('setup', { password: pw, initialBalance: Number(bal) });
-    }
-    const r = await api('login', { password: pw });
-    token = r.token;
-    localStorage.setItem('jifen_token', token);
-    await loadAll();
+  if (needSetup) {
+    if (pw.length < 4) { err.textContent = '密码至少4位'; return; }
+    const bal = Number(document.getElementById('initBalance').value) || 0;
+    LS.set('jifen_auth', { password: btoa(pw), initial: bal });
+    LS.set('jifen_config', DEFAULT_CONFIG);
+    LS.set('jifen_days', {});
+    LS.set('jifen_records', []);
+    LS.set('jifen_session', true);
+    loadAll();
     showApp();
-  } catch (e) {
-    err.textContent = e.message;
+  } else {
+    const auth = LS.get('jifen_auth', null);
+    if (!auth || auth.password !== btoa(pw)) {
+      err.textContent = '密码错误';
+      return;
+    }
+    LS.set('jifen_session', true);
+    loadAll();
+    showApp();
   }
 }
 
-async function doLogout() {
-  try { await api('logout', {}); } catch (e) {}
-  token = '';
-  localStorage.removeItem('jifen_token');
+function doLogout() {
+  LS.del('jifen_session');
   showLogin(false);
 }
 
@@ -673,14 +754,13 @@ document.getElementById('pwInput').addEventListener('keydown', e => {
 });
 
 // ===== 渲染：头部 =====
-
 let curPage = 'reward';
 
 function updatePointsDisplay() {
   const day = getDayData();
   const dayReward = sumObj(day.rewards);
   const dayPunish = sumObj(day.punishes);
-  const dayNet = dayReward + dayPunish; // 惩罚为负数，可为负余额
+  const dayNet = dayReward + dayPunish;
   const isDayPage = curPage === 'reward' || curPage === 'punish';
 
   document.getElementById('pointsLabel').textContent = isDayPage ? '当日积分余额' : '积分总额';
@@ -690,9 +770,6 @@ function updatePointsDisplay() {
   document.getElementById('weekPunish').textContent = dayPunish;
   document.getElementById('mallPoints').textContent = state.balance;
 }
-
-const sumObj = (obj) => Object.values(obj || {}).reduce(
-  (a, v) => (typeof v === 'number' && Number.isFinite(v) ? a + v : a), 0);
 
 // ===== 日期栏 =====
 function renderDateBars() {
@@ -837,7 +914,6 @@ function setCustomPoints(type, name, val, accent) {
     day[type][name] = accent === 'reward' ? n : -n;
   }
   updateDailySummary();
-  // 更新分组汇总徽牌
   refreshGroupSums(type === 'rewards' ? 'rewards' : 'punishes', type);
 }
 
@@ -864,25 +940,12 @@ function refreshGroupSums(page, type) {
   });
 }
 
-// ===== 提交 =====
-let submitting = false;
-async function submitDay(type) {
-  if (submitting) return;
-  submitting = true;
-  try {
-    const day = ensureDay();
-    const r = await api('day', {
-      date: state.selectedDate,
-      rewards: day.rewards,
-      punishes: day.punishes,
-    });
-    state.balance = r.balance;
-    updatePointsDisplay();
-    showToast(type === 'rewards' ? '✅ 奖励已提交保存' : '✅ 惩罚已提交保存');
-  } catch (e) {
-    showToast('❌ ' + e.message);
-  }
-  submitting = false;
+// ===== 提交（保存到 localStorage）=====
+function submitDay(type) {
+  LS.set('jifen_days', state.days);
+  state.balance = computeBalance();
+  updatePointsDisplay();
+  showToast(type === 'rewards' ? '✅ 奖励已提交保存' : '✅ 惩罚已提交保存');
 }
 
 // ===== 商城 =====
@@ -924,25 +987,33 @@ function openExchangeModal(idx) {
   `);
 }
 
-async function confirmExchange(idx) {
+function confirmExchange(idx) {
   const item = state.config.mall[idx];
-  const body = { index: idx };
+  let cost = item.points;
   if (item.points == null) {
     const el = document.getElementById('customCost');
-    body.cost = el ? Number(el.value) : 0;
+    cost = el ? Number(el.value) : 0;
   }
-  try {
-    const r = await api('exchange', body);
-    state.balance = r.balance;
-    state.records = r.records;
-    closeModal();
-    renderMall();
-    renderRecords();
-    updatePointsDisplay();
-    showToast(`🎉 兑换成功！${item.name}`);
-  } catch (e) {
-    showToast('❌ ' + e.message);
+  if (cost > state.balance) {
+    showToast('❌ 积分不足');
+    return;
   }
+  const ts = Date.now();
+  state.records.unshift({
+    name: item.name,
+    desc: item.desc || '',
+    icon: item.icon || '🎁',
+    points: cost,
+    ts,
+    balance: state.balance - cost,
+  });
+  LS.set('jifen_records', state.records);
+  state.balance = computeBalance();
+  closeModal();
+  renderMall();
+  renderRecords();
+  updatePointsDisplay();
+  showToast(`🎉 兑换成功！${item.name}`);
 }
 
 // ===== 记录 =====
@@ -969,19 +1040,15 @@ function renderRecords() {
     </div>`).join('');
 }
 
-async function deleteRecord(ts) {
+function deleteRecord(ts) {
   if (!confirm('确定删除这条兑换记录吗？删除后积分会自动返还。')) return;
-  try {
-    const r = await api('record-delete', { ts });
-    state.balance = r.balance;
-    state.records = r.records;
-    state.breakdown.spent = r.records.reduce((a, x) => a + (Number(x.points) || 0), 0);
-    renderRecords();
-    renderBreakdown();
-    renderMall();
-    updatePointsDisplay();
-    showToast('✅ 记录已删除，积分已返还');
-  } catch (e) { showToast('❌ ' + e.message); }
+  state.records = state.records.filter(r => r.ts !== ts);
+  LS.set('jifen_records', state.records);
+  state.balance = computeBalance();
+  renderRecords();
+  renderMall();
+  updatePointsDisplay();
+  showToast('✅ 记录已删除，积分已返还');
 }
 
 // ===== 管理页 =====
@@ -1076,7 +1143,7 @@ function openEditForm(ii, gi) {
   `);
 }
 
-async function saveItem(ii, gi) {
+function saveItem(ii, gi) {
   const tab = state.adminTab;
   const name = document.getElementById('f-name').value.trim();
   if (!name) { showToast('请输入项目名称'); return; }
@@ -1105,10 +1172,10 @@ async function saveItem(ii, gi) {
       g.items.push({ name, points });
     }
   }
-  await persistConfig('✅ 已保存');
+  persistConfig('✅ 已保存');
 }
 
-async function deleteItem(ii, gi) {
+function deleteItem(ii, gi) {
   const tab = state.adminTab;
   let name = '';
   if (tab === 'mall') name = state.config.mall[ii].name;
@@ -1124,44 +1191,35 @@ async function deleteItem(ii, gi) {
   `);
 }
 
-async function doDelete(ii, gi) {
+function doDelete(ii, gi) {
   const tab = state.adminTab;
   if (tab === 'mall') state.config.mall.splice(ii, 1);
   else state.config[tab][gi].items.splice(ii, 1);
-  await persistConfig('🗑️ 已删除');
+  persistConfig('🗑️ 已删除');
   closeModal();
 }
 
-async function persistConfig(msg) {
-  try {
-    await api('config', {
-      rewards: state.config.rewards,
-      punishes: state.config.punishes,
-      mall: state.config.mall,
-    });
-    closeModal();
-    renderRewardList();
-    renderPunishList();
-    renderMall();
-    renderAdmin();
-    showToast(msg);
-  } catch (e) {
-    showToast('❌ ' + e.message);
-  }
+function persistConfig(msg) {
+  LS.set('jifen_config', state.config);
+  closeModal();
+  renderRewardList();
+  renderPunishList();
+  renderMall();
+  renderAdmin();
+  showToast(msg);
 }
 
-async function changePassword() {
+function changePassword() {
   const oldPw = document.getElementById('oldPw').value;
   const newPw = document.getElementById('newPw').value;
   if (newPw.length < 4) { showToast('新密码至少4位'); return; }
-  try {
-    await api('password', { oldPassword: oldPw, newPassword: newPw });
-    document.getElementById('oldPw').value = '';
-    document.getElementById('newPw').value = '';
-    showToast('✅ 密码已修改');
-  } catch (e) {
-    showToast('❌ ' + e.message);
-  }
+  const auth = LS.get('jifen_auth', {});
+  if (auth.password !== btoa(oldPw)) { showToast('❌ 原密码错误'); return; }
+  auth.password = btoa(newPw);
+  LS.set('jifen_auth', auth);
+  document.getElementById('oldPw').value = '';
+  document.getElementById('newPw').value = '';
+  showToast('✅ 密码已修改');
 }
 
 // ===== 页面切换 =====
