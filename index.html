@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>喜宝家庭积分</title>
+<style>
+:root {
+  --bg: #F0F2F5;
+  --card-bg: #FFFFFF;
+  --primary: #FF8C42;
+  --primary-light: #FFF3E8;
+  --reward: #52C41A;
+  --reward-light: #F0FBEB;
+  --punish: #FF4D4F;
+  --punish-light: #FFF1F0;
+  --mall: #722ED1;
+  --mall-light: #F7F0FF;
+  --gold: #FAAD14;
+  --text-main: #1A1A1A;
+  --text-sub: #999;
+  --text-hint: #CCC;
+  --border: #F0F0F0;
+  --shadow: 0 2px 8px rgba(0,0,0,0.06);
+  --radius: 14px;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  background: var(--bg);
+  color: var(--text-main);
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding-bottom: calc(72px + var(--safe-bottom));
+  overflow-x: hidden;
+}
+
+/* ===== Login ===== */
+.login-screen {
+  position: fixed; inset: 0;
+  background: linear-gradient(160deg, #FF8C42 0%, #FF6B6B 60%, #F759AB 100%);
+  z-index: 500;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+}
+.login-box {
+  background: #fff;
+  border-radius: 24px;
+  padding: 36px 28px;
+  width: 100%;
+  max-width: 340px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  text-align: center;
+}
+.login-emoji { font-size: 56px; margin-bottom: 8px; }
+.login-title { font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+.login-sub { font-size: 13px; color: var(--text-sub); margin-bottom: 24px; }
+.login-input {
+  width: 100%; padding: 14px 16px;
+  border: 2px solid var(--border); border-radius: 12px;
+  font-size: 16px; outline: none; margin-bottom: 12px;
+  transition: border-color .2s;
+}
+.login-input:focus { border-color: var(--primary); }
+.login-btn {
+  width: 100%; padding: 14px;
+  border: none; border-radius: 12px;
+  background: linear-gradient(135deg, #FF8C42, #FF6B6B);
+  color: #fff; font-size: 16px; font-weight: 700;
+  cursor: pointer; margin-top: 4px;
+}
+.login-btn:active { transform: scale(.97); }
+.login-err { color: var(--punish); font-size: 13px; margin-top: 10px; min-height: 18px; }
+
+/* ===== Header ===== */
+.header {
+  background: linear-gradient(135deg, #FF8C42 0%, #FF6B6B 100%);
+  padding: 16px 20px 28px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: -20px; left: 0; right: 0;
+  height: 40px;
+  background: var(--bg);
+  border-radius: 24px 24px 0 0;
+}
+.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.header-title { font-size: 18px; font-weight: 700; }
+.header-logout {
+  font-size: 13px;
+  background: rgba(255,255,255,0.2);
+  padding: 4px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.points-display { text-align: center; position: relative; z-index: 1; }
+.points-label { font-size: 13px; opacity: 0.85; margin-bottom: 2px; }
+.points-value { font-size: 42px; font-weight: 800; letter-spacing: -1px; line-height: 1.1; }
+.points-value .unit { font-size: 16px; font-weight: 600; margin-left: 4px; }
+.points-stats { display: flex; justify-content: center; gap: 24px; margin-top: 8px; font-size: 12px; opacity: 0.85; }
+
+/* ===== Page ===== */
+.page { display: none; padding: 0 16px; animation: fadeIn 0.3s ease; }
+.page.active { display: block; }
+@keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+
+.section-title {
+  font-size: 15px; font-weight: 700;
+  margin: 16px 0 10px;
+  display: flex; align-items: center; gap: 6px;
+}
+.section-title .badge {
+  font-size: 11px; font-weight: 600;
+  padding: 2px 8px; border-radius: 10px; color: #fff;
+}
+
+/* ===== Collapsible Group ===== */
+.group {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+.group-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px;
+  cursor: pointer; user-select: none;
+}
+.group-header:active { background: #FAFAFA; }
+.group-icon {
+  width: 36px; height: 36px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.group-icon.reward { background: var(--reward-light); }
+.group-icon.punish { background: var(--punish-light); }
+.group-name { font-size: 15px; font-weight: 700; flex: 1; }
+.group-count { font-size: 12px; color: var(--text-sub); }
+.group-sum { font-size: 13px; font-weight: 800; padding: 3px 10px; border-radius: 12px; }
+.group-sum.reward { background: var(--reward-light); color: var(--reward); }
+.group-sum.punish { background: var(--punish-light); color: var(--punish); }
+.group-arrow { font-size: 12px; color: var(--text-sub); transition: transform 0.3s; }
+.group.open .group-arrow { transform: rotate(180deg); }
+.group-body { max-height: 0; overflow: hidden; transition: max-height 0.35s ease; }
+.group.open .group-body { max-height: 1600px; }
+.group-items { padding: 0 12px 12px; }
+
+/* ===== Item Card ===== */
+.item-card {
+  background: #FAFAFA;
+  border: 2px solid transparent;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 6px;
+  display: flex; align-items: center; justify-content: space-between;
+  transition: all 0.2s;
+}
+.item-card.selected { border-color: var(--reward); background: var(--reward-light); }
+.item-card.selected-punish { border-color: var(--punish); background: var(--punish-light); }
+.item-info { flex: 1; }
+.item-name { font-size: 15px; font-weight: 500; }
+.item-points { font-size: 13px; font-weight: 700; margin-top: 2px; }
+.item-points.positive { color: var(--reward); }
+.item-points.negative { color: var(--punish); }
+.item-points.custom { color: var(--gold); }
+
+.toggle-btn {
+  width: 44px; height: 44px; border-radius: 12px;
+  border: 2px solid var(--border); background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; cursor: pointer; flex-shrink: 0;
+}
+.toggle-btn.checked { background: var(--reward); border-color: var(--reward); color: #fff; }
+.toggle-btn.checked-punish { background: var(--punish); border-color: var(--punish); color: #fff; }
+
+.custom-input {
+  width: 64px; height: 38px;
+  border: 2px solid var(--border); border-radius: 8px;
+  text-align: center; font-size: 16px; font-weight: 700; outline: none;
+}
+.custom-input.positive { color: var(--reward); }
+.custom-input.negative { color: var(--punish); }
+
+/* ===== Date Bar ===== */
+.date-bar { display: flex; gap: 6px; overflow-x: auto; padding: 12px 0 4px; scrollbar-width: none; }
+.date-bar::-webkit-scrollbar { display: none; }
+.date-chip {
+  flex-shrink: 0; padding: 8px 14px; border-radius: 10px;
+  background: var(--card-bg); text-align: center; cursor: pointer; box-shadow: var(--shadow);
+}
+.date-chip .dow { font-size: 11px; color: var(--text-sub); }
+.date-chip .day { font-size: 16px; font-weight: 700; margin-top: 2px; }
+.date-chip.active { background: var(--primary); color: #fff; }
+.date-chip.active .dow { color: rgba(255,255,255,0.8); }
+
+/* ===== Submit ===== */
+.submit-bar { padding: 12px 0 16px; }
+.submit-btn {
+  width: 100%; padding: 14px; border: none; border-radius: var(--radius);
+  font-size: 16px; font-weight: 700; color: #fff; cursor: pointer;
+}
+.submit-btn.reward { background: var(--reward); }
+.submit-btn.punish { background: var(--punish); }
+.submit-btn:active { transform: scale(0.98); }
+.submit-btn:disabled { opacity: 0.5; }
+
+/* ===== Summary ===== */
+.daily-summary {
+  background: var(--card-bg); border-radius: var(--radius);
+  padding: 14px 16px; margin: 12px 0;
+  display: flex; justify-content: space-around; box-shadow: var(--shadow);
+}
+.summary-item { text-align: center; }
+.summary-item .val { font-size: 22px; font-weight: 800; }
+.summary-item .val.pos { color: var(--reward); }
+.summary-item .val.neg { color: var(--punish); }
+.summary-item .lbl { font-size: 11px; color: var(--text-sub); margin-top: 2px; }
+
+/* ===== Mall ===== */
+.mall-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px 0; }
+.mall-card {
+  background: var(--card-bg); border-radius: var(--radius);
+  padding: 16px 12px; text-align: center; box-shadow: var(--shadow);
+}
+.mall-icon { font-size: 36px; margin-bottom: 8px; }
+.mall-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; line-height: 1.3; }
+.mall-desc { font-size: 11px; color: var(--text-sub); margin-bottom: 10px; line-height: 1.4; }
+.mall-cost { font-size: 16px; font-weight: 800; color: var(--gold); margin-bottom: 8px; }
+.mall-cost .unit { font-size: 11px; font-weight: 600; }
+.mall-btn {
+  width: 100%; padding: 8px; border: none; border-radius: 8px;
+  background: var(--mall); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.mall-btn:disabled { background: #CCC; }
+.mall-btn:active { transform: scale(0.95); }
+
+/* ===== Record ===== */
+.record-item {
+  background: var(--card-bg); border-radius: var(--radius);
+  padding: 14px 16px; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow);
+}
+.record-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; flex-shrink: 0; background: var(--mall-light);
+}
+.record-info { flex: 1; }
+.record-name { font-size: 14px; font-weight: 600; }
+.record-date { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
+.record-points { font-size: 16px; font-weight: 800; color: var(--punish); }
+
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-hint); }
+.empty-state .emoji { font-size: 48px; margin-bottom: 12px; }
+.empty-state .text { font-size: 14px; }
+
+/* ===== Admin ===== */
+.admin-tabs { display: flex; gap: 8px; padding: 14px 0 10px; }
+.admin-tab {
+  flex: 1; padding: 10px; text-align: center;
+  border-radius: 10px; background: var(--card-bg);
+  font-size: 14px; font-weight: 600; cursor: pointer; box-shadow: var(--shadow);
+}
+.admin-tab.active { background: var(--primary); color: #fff; }
+.admin-row {
+  background: var(--card-bg); border-radius: 12px;
+  padding: 12px 14px; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow);
+}
+.admin-row .r-icon { font-size: 22px; }
+.admin-row .r-info { flex: 1; min-width: 0; }
+.admin-row .r-name { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-row .r-meta { font-size: 12px; color: var(--text-sub); margin-top: 2px; }
+.admin-row .r-btn {
+  width: 32px; height: 32px; border: none; border-radius: 8px;
+  font-size: 14px; cursor: pointer; background: #F0F0F0;
+}
+.admin-row .r-btn.del { color: var(--punish); }
+.admin-add {
+  width: 100%; padding: 13px; border: 2px dashed var(--border);
+  border-radius: 12px; background: none;
+  color: var(--text-sub); font-size: 14px; font-weight: 600;
+  cursor: pointer; margin: 10px 0 20px;
+}
+.pw-card {
+  background: var(--card-bg); border-radius: var(--radius);
+  padding: 16px; box-shadow: var(--shadow); margin: 16px 0 20px;
+}
+.pw-card h3 { font-size: 15px; margin-bottom: 12px; }
+.pw-card input {
+  width: 100%; padding: 12px 14px;
+  border: 2px solid var(--border); border-radius: 10px;
+  font-size: 15px; outline: none; margin-bottom: 10px;
+}
+.pw-card button {
+  width: 100%; padding: 12px; border: none; border-radius: 10px;
+  background: var(--primary); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer;
+}
+
+/* ===== Bottom Nav ===== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 430px;
+  background: #fff;
+  display: flex;
+  padding: 8px 0 calc(8px + var(--safe-bottom));
+  border-top: 1px solid var(--border);
+  z-index: 100;
+}
+.nav-item {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  cursor: pointer; padding: 4px 0;
+}
+.nav-icon { font-size: 22px; line-height: 1; }
+.nav-label { font-size: 11px; color: var(--text-sub); font-weight: 500; }
+.nav-item.active .nav-label { color: var(--primary); font-weight: 700; }
+
+/* ===== Modal ===== */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: none; align-items: center; justify-content: center;
+  z-index: 200; padding: 24px;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: #fff; border-radius: 20px;
+  padding: 28px 24px; width: 100%; max-width: 320px;
+  text-align: center; animation: slideUp 0.3s ease;
+}
+@keyframes slideUp { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-icon { font-size: 48px; margin-bottom: 12px; }
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+.modal-desc { font-size: 14px; color: var(--text-sub); margin-bottom: 16px; line-height: 1.5; }
+.modal-btns { display: flex; gap: 12px; }
+.modal-btn {
+  flex: 1; padding: 12px; border: none; border-radius: 10px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+}
+.modal-btn.cancel { background: #F0F0F0; color: var(--text-sub); }
+.modal-btn.confirm { background: var(--mall); color: #fff; }
+.modal-btn.confirm.warn { background: var(--punish); }
+.modal-btn:active { transform: scale(0.96); }
+
+/* 编辑表单 */
+.form-group { text-align: left; margin-bottom: 12px; }
+.form-group label { display: block; font-size: 13px; color: var(--text-sub); margin-bottom: 5px; }
+.form-group input, .form-group select {
+  width: 100%; padding: 11px 12px;
+  border: 2px solid var(--border); border-radius: 10px;
+  font-size: 15px; outline: none;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--primary); }
+.form-hint { font-size: 12px; color: var(--text-hint); margin-top: 4px; }
+
+/* ===== Toast ===== */
+.toast {
+  position: fixed; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.75); color: #fff;
+  padding: 12px 24px; border-radius: 10px;
+  font-size: 14px; z-index: 300; opacity: 0;
+  transition: opacity 0.3s; pointer-events: none;
+  max-width: 80%; text-align: center;
+}
+.toast.show { opacity: 1; }
+
+.loading-mask {
+  position: fixed; inset: 0; z-index: 400;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; color: var(--text-sub);
+}
+</style>
+</head>
+<body>
+
+<!-- ===== Loading ===== -->
+<div class="loading-mask" id="loadingMask">加载中…</div>
+
+<!-- ===== Login ===== -->
+<div class="login-screen" id="loginScreen" style="display:none">
+  <div class="login-box">
+    <div class="login-emoji">🏅</div>
+    <div class="login-title">喜宝家庭积分</div>
+    <div class="login-sub" id="loginSub">请输入家庭密码登录</div>
+    <input class="login-input" type="password" id="pwInput" placeholder="家庭密码" autocomplete="current-password">
+    <div id="setupExtra" style="display:none">
+      <input class="login-input" type="number" id="initBalance" placeholder="初始积分结余（可填0）">
+    </div>
+    <button class="login-btn" id="loginBtn" onclick="doLogin()">进入</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- ===== App ===== -->
+<div id="app" style="display:none">
+
+<div class="header">
+  <div class="header-top">
+    <div class="header-title">喜宝家庭积分</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="header-date" id="todayDate"></div>
+      <div class="header-logout" onclick="doLogout()">退出</div>
+    </div>
+  </div>
+  <div class="points-display">
+    <div class="points-label">当前积分余额</div>
+    <div class="points-value"><span id="totalPoints">0</span><span class="unit">分</span></div>
+    <div class="points-stats">
+      <span>本周奖励 <strong id="weekReward">0</strong></span>
+      <span>本周惩罚 <strong id="weekPunish">0</strong></span>
+    </div>
+  </div>
+</div>
+
+<!-- 奖励 -->
+<div class="page active" id="page-reward">
+  <div class="date-bar" id="rewardDateBar"></div>
+  <div class="daily-summary">
+    <div class="summary-item"><div class="val pos" id="dayReward">+0</div><div class="lbl">当日奖励</div></div>
+    <div class="summary-item"><div class="val neg" id="dayPunish">-0</div><div class="lbl">当日惩罚</div></div>
+    <div class="summary-item"><div class="val" id="dayNet" style="color:var(--primary)">0</div><div class="lbl">当日合计</div></div>
+  </div>
+  <div id="rewardList"></div>
+  <div class="submit-bar">
+    <button class="submit-btn reward" onclick="submitDay('rewards')">提交今日奖励</button>
+  </div>
+</div>
+
+<!-- 惩罚 -->
+<div class="page" id="page-punish">
+  <div class="date-bar" id="punishDateBar"></div>
+  <div class="daily-summary">
+    <div class="summary-item"><div class="val pos" id="dayReward2">+0</div><div class="lbl">当日奖励</div></div>
+    <div class="summary-item"><div class="val neg" id="dayPunish2">-0</div><div class="lbl">当日惩罚</div></div>
+    <div class="summary-item"><div class="val" id="dayNet2" style="color:var(--primary)">0</div><div class="lbl">当日合计</div></div>
+  </div>
+  <div id="punishList"></div>
+  <div class="submit-bar">
+    <button class="submit-btn punish" onclick="submitDay('punishes')">提交今日惩罚</button>
+  </div>
+</div>
+
+<!-- 积分商城 -->
+<div class="page" id="page-mall">
+  <div class="section-title" style="margin-top:16px">
+    <span>积分商城</span>
+    <span class="badge" style="background:var(--gold)"><span id="mallPoints">0</span> 分可用</span>
+  </div>
+  <div class="mall-grid" id="mallGrid"></div>
+</div>
+
+<!-- 兑换记录 -->
+<div class="page" id="page-record">
+  <div class="section-title" style="margin-top:16px"><span>兑换记录</span></div>
+  <div id="recordList"></div>
+</div>
+
+<!-- 管理 -->
+<div class="page" id="page-admin">
+  <div class="admin-tabs">
+    <div class="admin-tab active" data-tab="rewards" onclick="switchAdminTab('rewards')">奖励项目</div>
+    <div class="admin-tab" data-tab="punishes" onclick="switchAdminTab('punishes')">惩罚项目</div>
+    <div class="admin-tab" data-tab="mall" onclick="switchAdminTab('mall')">积分商城</div>
+  </div>
+  <div id="adminList"></div>
+  <button class="admin-add" id="adminAddBtn" onclick="openEditForm(null)">＋ 添加项目</button>
+  <div class="pw-card">
+    <h3>🔒 修改家庭密码</h3>
+    <input type="password" id="oldPw" placeholder="原密码">
+    <input type="password" id="newPw" placeholder="新密码（至少4位）">
+    <button onclick="changePassword()">保存新密码</button>
+  </div>
+</div>
+
+<!-- 底部导航 -->
+<div class="bottom-nav">
+  <div class="nav-item active" data-page="reward" onclick="switchPage('reward')">
+    <div class="nav-icon">🎁</div><div class="nav-label">奖励</div>
+  </div>
+  <div class="nav-item" data-page="punish" onclick="switchPage('punish')">
+    <div class="nav-icon">⚠️</div><div class="nav-label">惩罚</div>
+  </div>
+  <div class="nav-item" data-page="mall" onclick="switchPage('mall')">
+    <div class="nav-icon">🛒</div><div class="nav-label">积分商城</div>
+  </div>
+  <div class="nav-item" data-page="record" onclick="switchPage('record')">
+    <div class="nav-icon">📋</div><div class="nav-label">兑换记录</div>
+  </div>
+  <div class="nav-item" data-page="admin" onclick="switchPage('admin')">
+    <div class="nav-icon">⚙️</div><div class="nav-label">管理</div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== API =====
+let token = localStorage.getItem('jifen_token') || '';
+
+async function api(path, body) {
+  const res = await fetch('/api/' + path, {
+    method: body !== undefined ? 'POST' : 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401 && path !== 'login') {
+    showLogin(false);
+    throw new Error(data.error || '请重新登录');
+  }
+  if (!res.ok) throw new Error(data.error || '请求失败');
+  return data;
+}
+
+// ===== State =====
+let state = {
+  config: null,
+  balance: 0,
+  records: [],
+  days: {},
+  selectedDate: getTodayStr(),
+  expanded: { rewards: { '生活习惯': true }, punishes: { '生活习惯': true } },
+  adminTab: 'rewards',
+};
+
+const dowNames = ['日','一','二','三','四','五','六'];
+
+function getTodayStr() {
+  const d = new Date();
+  return fmtDate(d);
+}
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function getDateStr(offset) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return fmtDate(d);
+}
+
+// ===== 启动 =====
+async function boot() {
+  try {
+    const st = await api('status');
+    if (st.loggedIn) {
+      await loadAll();
+      showApp();
+    } else {
+      showLogin(st.needSetup);
+    }
+  } catch (e) {
+    document.getElementById('loadingMask').textContent = '连接失败：' + e.message;
+  }
+}
+
+async function loadAll() {
+  const data = await api('data');
+  state.config = data.config;
+  state.balance = data.balance;
+  state.records = data.records || [];
+  state.days = data.days || {};
+  renderAll();
+}
+
+function renderAll() {
+  renderDate();
+  renderDateBars();
+  renderRewardList();
+  renderPunishList();
+  renderMall();
+  renderRecords();
+  renderAdmin();
+  updatePointsDisplay();
+  updateDailySummary();
+}
+
+// ===== 登录 =====
+let needSetup = false;
+
+function showLogin(setup) {
+  needSetup = !!setup;
+  document.getElementById('loadingMask').style.display = 'none';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginSub').textContent = setup ? '首次使用，请设置家庭密码' : '请输入家庭密码登录';
+  document.getElementById('setupExtra').style.display = setup ? 'block' : 'none';
+  document.getElementById('loginBtn').textContent = setup ? '初始化' : '进入';
+}
+
+async function doLogin() {
+  const pw = document.getElementById('pwInput').value.trim();
+  const err = document.getElementById('loginErr');
+  err.textContent = '';
+  try {
+    if (needSetup) {
+      const bal = document.getElementById('initBalance').value || '0';
+      await api('setup', { password: pw, initialBalance: Number(bal) });
+    }
+    const r = await api('login', { password: pw });
+    token = r.token;
+    localStorage.setItem('jifen_token', token);
+    await loadAll();
+    showApp();
+  } catch (e) {
+    err.textContent = e.message;
+  }
+}
+
+async function doLogout() {
+  try { await api('logout', {}); } catch (e) {}
+  token = '';
+  localStorage.removeItem('jifen_token');
+  showLogin(false);
+}
+
+function showApp() {
+  document.getElementById('loadingMask').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+}
+
+document.getElementById('pwInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ===== 渲染：头部 =====
+function renderDate() {
+  const d = new Date();
+  document.getElementById('todayDate').textContent =
+    `${d.getMonth()+1}月${d.getDate()}日 周${dowNames[d.getDay()]}`;
+}
+
+function updatePointsDisplay() {
+  document.getElementById('totalPoints').textContent = state.balance;
+  document.getElementById('mallPoints').textContent = state.balance;
+  // 本周（以最近7天计）
+  let weekReward = 0, weekPunish = 0;
+  for (let i = 0; i < 7; i++) {
+    const day = state.days[getDateStr(-i)];
+    if (day) {
+      weekReward += sumObj(day.rewards);
+      weekPunish += sumObj(day.punishes);
+    }
+  }
+  document.getElementById('weekReward').textContent = '+' + weekReward;
+  document.getElementById('weekPunish').textContent = weekPunish;
+}
+
+const sumObj = (obj) => Object.values(obj || {}).reduce(
+  (a, v) => (typeof v === 'number' && Number.isFinite(v) ? a + v : a), 0);
+
+// ===== 日期栏 =====
+function renderDateBars() {
+  let html = '';
+  for (let i = -3; i <= 3; i++) {
+    const ds = getDateStr(i);
+    const d = new Date(ds + 'T00:00:00');
+    const active = ds === state.selectedDate ? 'active' : '';
+    html += `<div class="date-chip ${active}" onclick="selectDate('${ds}')">
+      <div class="dow">周${dowNames[d.getDay()]}</div>
+      <div class="day">${d.getDate()}</div>
+    </div>`;
+  }
+  document.getElementById('rewardDateBar').innerHTML = html;
+  document.getElementById('punishDateBar').innerHTML = html;
+}
+
+function selectDate(ds) {
+  state.selectedDate = ds;
+  renderDateBars();
+  renderRewardList();
+  renderPunishList();
+  updateDailySummary();
+}
+
+// ===== 当日数据 =====
+function getDayData() {
+  if (!state.days[state.selectedDate]) {
+    return { rewards: {}, punishes: {} };
+  }
+  return state.days[state.selectedDate];
+}
+
+function updateDailySummary() {
+  const day = getDayData();
+  const reward = sumObj(day.rewards);
+  const punish = sumObj(day.punishes);
+  const net = reward + punish;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('dayReward', '+' + reward);
+  set('dayPunish', punish);
+  set('dayNet', (net >= 0 ? '+' : '') + net);
+  set('dayReward2', '+' + reward);
+  set('dayPunish2', punish);
+  set('dayNet2', (net >= 0 ? '+' : '') + net);
+}
+
+// ===== 折叠分组 =====
+const iconMap = { '生活习惯': '🏠', '学习习惯': '📚', '兴趣拓展': '🎨', '家庭品行': '❤️', '行为品德': '🚫' };
+
+function toggleGroup(page, cat) {
+  state.expanded[page][cat] = !state.expanded[page][cat];
+  const el = document.getElementById(`grp-${page}-${cat}`);
+  if (el) el.classList.toggle('open', !!state.expanded[page][cat]);
+}
+
+function buildGroupHtml(page, type, groups, accent) {
+  let html = '';
+  groups.forEach(group => {
+    const day = getDayData();
+    let sum = 0;
+    group.items.forEach(item => {
+      const v = day[type] && day[type][item.name];
+      if (typeof v === 'number') sum += v;
+    });
+    const open = state.expanded[page][group.category] ? 'open' : '';
+    const sumHtml = sum !== 0 ? `<span class="group-sum ${accent}">${sum > 0 ? '+' : ''}${sum}</span>` : '';
+    html += `<div class="group ${open}" id="grp-${page}-${group.category}">
+      <div class="group-header" onclick="toggleGroup('${page}','${group.category}')">
+        <div class="group-icon ${accent}">${iconMap[group.category] || '📋'}</div>
+        <div class="group-name">${group.category}</div>
+        <span class="group-count">${group.items.length}项</span>
+        ${sumHtml}
+        <span class="group-arrow">▼</span>
+      </div>
+      <div class="group-body"><div class="group-items">`;
+    group.items.forEach(item => {
+      const isSelected = !!(day[type] && day[type][item.name] !== undefined);
+      const selCls = isSelected ? (accent === 'reward' ? 'selected' : 'selected-punish') : '';
+      const chkCls = isSelected ? (accent === 'reward' ? 'checked' : 'checked-punish') : '';
+      if (item.points == null) {
+        const val = day[type] && day[type][item.name] !== undefined ? day[type][item.name] : '';
+        html += `<div class="item-card ${selCls}">
+          <div class="item-info">
+            <div class="item-name">${item.name}</div>
+            <div class="item-points custom">视情况（${accent === 'reward' ? '+' : '-'}）</div>
+          </div>
+          <input type="number" class="custom-input ${accent === 'reward' ? 'positive' : 'negative'}" placeholder="0"
+            value="${val}" min="0"
+            onclick="event.stopPropagation()"
+            oninput="setCustomPoints('${type}','${item.name}', this.value, '${accent}')">
+        </div>`;
+      } else {
+        const pts = accent === 'reward' ? `+${item.points}` : `${item.points}`;
+        html += `<div class="item-card ${selCls}" onclick="toggleItem('${type}','${item.name}', ${item.points})">
+          <div class="item-info">
+            <div class="item-name">${item.name}</div>
+            <div class="item-points ${accent === 'reward' ? 'positive' : 'negative'}">${pts}分</div>
+          </div>
+          <div class="toggle-btn ${chkCls}">${isSelected ? '✓' : ''}</div>
+        </div>`;
+      }
+    });
+    html += `</div></div></div>`;
+  });
+  return html;
+}
+
+function renderRewardList() {
+  document.getElementById('rewardList').innerHTML =
+    buildGroupHtml('rewards', 'rewards', state.config.rewards, 'reward');
+  updateDailySummary();
+}
+
+function renderPunishList() {
+  document.getElementById('punishList').innerHTML =
+    buildGroupHtml('punishes', 'punishes', state.config.punishes, 'punish');
+  updateDailySummary();
+}
+
+// ===== 选择/自定义分值（本地修改，提交后保存）=====
+function ensureDay() {
+  if (!state.days[state.selectedDate]) {
+    state.days[state.selectedDate] = { rewards: {}, punishes: {} };
+  }
+  return state.days[state.selectedDate];
+}
+
+function toggleItem(type, name, points) {
+  const day = ensureDay();
+  if (day[type][name] !== undefined) delete day[type][name];
+  else day[type][name] = points;
+  type === 'rewards' ? renderRewardList() : renderPunishList();
+}
+
+function setCustomPoints(type, name, val, accent) {
+  const day = ensureDay();
+  if (val === '' || val === null) delete day[type][name];
+  else {
+    let n = Math.abs(parseInt(val) || 0);
+    day[type][name] = accent === 'reward' ? n : -n;
+  }
+  updateDailySummary();
+  // 更新分组汇总徽牌
+  refreshGroupSums(type === 'rewards' ? 'rewards' : 'punishes', type);
+}
+
+function refreshGroupSums(page, type) {
+  const groups = page === 'rewards' ? state.config.rewards : state.config.punishes;
+  const day = getDayData();
+  groups.forEach(group => {
+    let sum = 0;
+    group.items.forEach(item => {
+      const v = day[type] && day[type][item.name];
+      if (typeof v === 'number') sum += v;
+    });
+    const el = document.getElementById(`grp-${page}-${group.category}`);
+    if (!el) return;
+    let badge = el.querySelector('.group-sum');
+    if (sum !== 0) {
+      if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'group-sum ' + (page === 'rewards' ? 'reward' : 'punish');
+        el.querySelector('.group-arrow').insertAdjacentElement('beforebegin', badge);
+      }
+      badge.textContent = (sum > 0 ? '+' : '') + sum;
+    } else if (badge) badge.remove();
+  });
+}
+
+// ===== 提交 =====
+let submitting = false;
+async function submitDay(type) {
+  if (submitting) return;
+  submitting = true;
+  try {
+    const day = ensureDay();
+    const r = await api('day', {
+      date: state.selectedDate,
+      rewards: day.rewards,
+      punishes: day.punishes,
+    });
+    state.balance = r.balance;
+    updatePointsDisplay();
+    showToast(type === 'rewards' ? '✅ 奖励已提交保存' : '✅ 惩罚已提交保存');
+  } catch (e) {
+    showToast('❌ ' + e.message);
+  }
+  submitting = false;
+}
+
+// ===== 商城 =====
+function renderMall() {
+  let html = '';
+  state.config.mall.forEach((item, idx) => {
+    const canAfford = item.points == null || state.balance >= item.points;
+    const costText = item.points == null ? '视情况' : `<span class="unit">积分</span>${item.points}`;
+    html += `<div class="mall-card">
+      <div class="mall-icon">${item.icon || '🎁'}</div>
+      <div class="mall-name">${item.name}</div>
+      <div class="mall-desc">${item.desc || ''}</div>
+      <div class="mall-cost">${costText}</div>
+      <button class="mall-btn" ${!canAfford ? 'disabled' : ''} onclick="openExchangeModal(${idx})">
+        ${canAfford ? '兑换' : '积分不足'}
+      </button>
+    </div>`;
+  });
+  document.getElementById('mallGrid').innerHTML = html;
+}
+
+function openExchangeModal(idx) {
+  const item = state.config.mall[idx];
+  const costHtml = item.points == null
+    ? `<div class="form-group">
+         <label>本次消耗积分（视情况）</label>
+         <input type="number" id="customCost" placeholder="输入本次消耗的积分" min="0" value="0">
+       </div>`
+    : '';
+  showModal(`
+    <div class="modal-icon">${item.icon || '🎁'}</div>
+    <div class="modal-title">${item.name}</div>
+    <div class="modal-desc">${item.desc || ''}<br>当前余额 <strong style="color:var(--gold)">${state.balance}</strong> 分</div>
+    ${costHtml}
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+      <button class="modal-btn confirm" onclick="confirmExchange(${idx})">确认兑换</button>
+    </div>
+  `);
+}
+
+async function confirmExchange(idx) {
+  const item = state.config.mall[idx];
+  const body = { index: idx };
+  if (item.points == null) {
+    const el = document.getElementById('customCost');
+    body.cost = el ? Number(el.value) : 0;
+  }
+  try {
+    const r = await api('exchange', body);
+    state.balance = r.balance;
+    state.records = r.records;
+    closeModal();
+    renderMall();
+    renderRecords();
+    updatePointsDisplay();
+    showToast(`🎉 兑换成功！${item.name}`);
+  } catch (e) {
+    showToast('❌ ' + e.message);
+  }
+}
+
+// ===== 记录 =====
+function fmtTs(ts) {
+  const d = new Date(ts);
+  return `${d.getMonth()+1}月${d.getDate()}日 ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+function renderRecords() {
+  const c = document.getElementById('recordList');
+  if (!state.records.length) {
+    c.innerHTML = `<div class="empty-state"><div class="emoji">📭</div><div class="text">还没有兑换记录</div></div>`;
+    return;
+  }
+  c.innerHTML = state.records.map(r => `
+    <div class="record-item">
+      <div class="record-icon">${r.icon || '🎁'}</div>
+      <div class="record-info">
+        <div class="record-name">${r.name}</div>
+        <div class="record-date">${fmtTs(r.ts)} · 余额 ${r.balance}分</div>
+      </div>
+      <div class="record-points">-${r.points}</div>
+    </div>`).join('');
+}
+
+// ===== 管理页 =====
+function switchAdminTab(tab) {
+  state.adminTab = tab;
+  document.querySelectorAll('.admin-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.tab === tab));
+  renderAdmin();
+}
+
+function renderAdmin() {
+  const c = document.getElementById('adminList');
+  const tab = state.adminTab;
+  let html = '';
+  if (tab === 'mall') {
+    state.config.mall.forEach((m, idx) => {
+      html += `<div class="admin-row">
+        <div class="r-icon">${m.icon || '🎁'}</div>
+        <div class="r-info">
+          <div class="r-name">${m.name}</div>
+          <div class="r-meta">${m.points == null ? '视情况' : m.points + '积分'}${m.desc ? ' · ' + m.desc : ''}</div>
+        </div>
+        <button class="r-btn" onclick="openEditForm(${idx})">✏️</button>
+        <button class="r-btn del" onclick="deleteItem(${idx})">🗑️</button>
+      </div>`;
+    });
+  } else {
+    const groups = state.config[tab];
+    groups.forEach((g, gi) => {
+      g.items.forEach((item, ii) => {
+        html += `<div class="admin-row">
+          <div class="r-icon">${iconMap[g.category] || '📋'}</div>
+          <div class="r-info">
+            <div class="r-name">${item.name}</div>
+            <div class="r-meta">${g.category} · ${item.points == null ? '视情况' : (item.points > 0 ? '+' : '') + item.points + '分'}</div>
+          </div>
+          <button class="r-btn" onclick="openEditForm(${ii}, '${gi}')">✏️</button>
+          <button class="r-btn del" onclick="deleteItem(${ii}, '${gi}')">🗑️</button>
+        </div>`;
+      });
+    });
+  }
+  c.innerHTML = html;
+  document.getElementById('adminAddBtn').textContent =
+    tab === 'mall' ? '＋ 添加商城项目' : (tab === 'rewards' ? '＋ 添加奖励项目' : '＋ 添加惩罚项目');
+}
+
+const allCategories = ['生活习惯', '学习习惯', '兴趣拓展', '家庭品行', '行为品德'];
+
+function openEditForm(ii, gi) {
+  const tab = state.adminTab;
+  let item, cat;
+  if (tab === 'mall') {
+    item = ii !== null ? state.config.mall[ii] : { name: '', desc: '', points: 50, icon: '🎁' };
+  } else {
+    if (ii !== null) {
+      item = state.config[tab][gi].items[ii];
+      cat = state.config[tab][gi].category;
+    } else {
+      item = { name: '', points: tab === 'rewards' ? 1 : -1 };
+      cat = allCategories[0];
+    }
+  }
+  let form = '';
+  if (tab === 'mall') {
+    form = `
+      <div class="form-group"><label>项目名称</label><input id="f-name" value="${item.name}" placeholder="如：电影票兑换券"></div>
+      <div class="form-group"><label>描述</label><input id="f-desc" value="${item.desc || ''}" placeholder="如：周末看一场电影"></div>
+      <div class="form-group"><label>图标（Emoji）</label><input id="f-icon" value="${item.icon || '🎁'}" placeholder="🎬"></div>
+      <div class="form-group"><label>所需积分</label>
+        <input id="f-points" type="number" value="${item.points ?? ''}" placeholder="留空 = 视情况">
+        <div class="form-hint">留空表示"视情况"，兑换时手动输入</div>
+      </div>`;
+  } else {
+    const cats = allCategories.map(c =>
+      `<option value="${c}" ${c === cat ? 'selected' : ''}>${c}</option>`).join('');
+    form = `
+      <div class="form-group"><label>项目名称</label><input id="f-name" value="${item.name}" placeholder="如：认真练琴30分钟"></div>
+      <div class="form-group"><label>分类</label><select id="f-cat">${cats}</select></div>
+      <div class="form-group"><label>分值</label>
+        <input id="f-points" type="number" value="${item.points ?? ''}" placeholder="留空 = 视情况">
+        <div class="form-hint">${tab === 'rewards' ? '正数加分' : '负数扣分'}，留空表示"视情况"</div>
+      </div>`;
+  }
+  showModal(`
+    <div class="modal-title">${ii !== null ? '编辑项目' : '添加项目'}</div>
+    ${form}
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+      <button class="modal-btn confirm warn" style="background:var(--primary)" onclick="saveItem(${ii ?? 'null'}, ${gi ?? 'null'})">保存</button>
+    </div>
+  `);
+}
+
+async function saveItem(ii, gi) {
+  const tab = state.adminTab;
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { showToast('请输入项目名称'); return; }
+  let pointsRaw = document.getElementById('f-points').value;
+  let points = pointsRaw === '' ? null : Number(pointsRaw);
+  if (points !== null && !Number.isFinite(points)) { showToast('分值格式错误'); return; }
+
+  if (tab === 'mall') {
+    const item = {
+      name,
+      desc: document.getElementById('f-desc').value.trim(),
+      icon: document.getElementById('f-icon').value.trim() || '🎁',
+      points,
+    };
+    if (ii !== null) state.config.mall[ii] = item;
+    else state.config.mall.push(item);
+  } else {
+    const cat = document.getElementById('f-cat').value;
+    if (tab === 'punishes' && points !== null && points > 0) points = -points;
+    if (tab === 'rewards' && points !== null && points < 0) points = -points;
+    if (ii !== null) {
+      state.config[tab][gi].items[ii] = { name, points };
+    } else {
+      let g = state.config[tab].find(g => g.category === cat);
+      if (!g) { g = { category: cat, items: [] }; state.config[tab].push(g); }
+      g.items.push({ name, points });
+    }
+  }
+  await persistConfig('✅ 已保存');
+}
+
+async function deleteItem(ii, gi) {
+  const tab = state.adminTab;
+  let name = '';
+  if (tab === 'mall') name = state.config.mall[ii].name;
+  else name = state.config[tab][gi].items[ii].name;
+  showModal(`
+    <div class="modal-icon">🗑️</div>
+    <div class="modal-title">删除项目</div>
+    <div class="modal-desc">确定删除「${name}」吗？<br>历史记录不受影响。</div>
+    <div class="modal-btns">
+      <button class="modal-btn cancel" onclick="closeModal()">取消</button>
+      <button class="modal-btn confirm warn" onclick="doDelete(${ii ?? 'null'}, ${gi ?? 'null'})">删除</button>
+    </div>
+  `);
+}
+
+async function doDelete(ii, gi) {
+  const tab = state.adminTab;
+  if (tab === 'mall') state.config.mall.splice(ii, 1);
+  else state.config[tab][gi].items.splice(ii, 1);
+  await persistConfig('🗑️ 已删除');
+  closeModal();
+}
+
+async function persistConfig(msg) {
+  try {
+    await api('config', {
+      rewards: state.config.rewards,
+      punishes: state.config.punishes,
+      mall: state.config.mall,
+    });
+    closeModal();
+    renderRewardList();
+    renderPunishList();
+    renderMall();
+    renderAdmin();
+    showToast(msg);
+  } catch (e) {
+    showToast('❌ ' + e.message);
+  }
+}
+
+async function changePassword() {
+  const oldPw = document.getElementById('oldPw').value;
+  const newPw = document.getElementById('newPw').value;
+  if (newPw.length < 4) { showToast('新密码至少4位'); return; }
+  try {
+    await api('password', { oldPassword: oldPw, newPassword: newPw });
+    document.getElementById('oldPw').value = '';
+    document.getElementById('newPw').value = '';
+    showToast('✅ 密码已修改');
+  } catch (e) {
+    showToast('❌ ' + e.message);
+  }
+}
+
+// ===== 页面切换 =====
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ===== Modal / Toast =====
+function showModal(inner) {
+  document.getElementById('modalContent').innerHTML = inner;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ===== 启动 =====
+boot();
+</script>
+</body>
+</html>
