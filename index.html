@@ -470,6 +470,14 @@ body {
 
 <!-- 管理 -->
 <div class="page" id="page-admin">
+  <div class="pw-card" style="margin-top:14px">
+    <h3>🧮 积分计算明细</h3>
+    <div id="breakdownBox" style="font-size:14px;line-height:1.9"></div>
+    <div style="display:flex;gap:8px;margin-top:8px">
+      <input type="number" id="initialInput" placeholder="初始积分" style="flex:1">
+      <button onclick="saveInitial()" style="width:auto;padding:0 14px">修正初始积分</button>
+    </div>
+  </div>
   <div class="admin-tabs">
     <div class="admin-tab active" data-tab="rewards" onclick="switchAdminTab('rewards')">奖励项目</div>
     <div class="admin-tab" data-tab="punishes" onclick="switchAdminTab('punishes')">惩罚项目</div>
@@ -582,7 +590,33 @@ async function loadAll() {
   state.balance = data.balance;
   state.records = data.records || [];
   state.days = data.days || {};
+  state.breakdown = data.breakdown || { initial: 0, daySum: 0, spent: 0 };
   renderAll();
+}
+
+function renderBreakdown() {
+  const b = state.breakdown || {};
+  const dayCount = Object.keys(state.days || {}).length;
+  document.getElementById('breakdownBox').innerHTML =
+    `初始积分 <strong>${b.initial ?? 0}</strong> 分<br>` +
+    `＋ ${dayCount}天每日余额累计 <strong>${b.daySum ?? 0}</strong> 分<br>` +
+    `－ 已兑换商品 <strong>${b.spent ?? 0}</strong> 分<br>` +
+    `＝ 积分总额 <strong style="color:var(--gold)">${state.balance}</strong> 分`;
+  document.getElementById('initialInput').value = b.initial ?? 0;
+}
+
+async function saveInitial() {
+  const v = Number(document.getElementById('initialInput').value);
+  if (!Number.isFinite(v)) { showToast('❌ 请输入有效数字'); return; }
+  try {
+    const r = await api('initial', { initial: v });
+    state.balance = r.balance;
+    state.breakdown.initial = v;
+    renderBreakdown();
+    updatePointsDisplay();
+    renderMall();
+    showToast('✅ 初始积分已修正');
+  } catch (e) { showToast('❌ ' + e.message); }
 }
 
 function renderAll() {
@@ -593,6 +627,7 @@ function renderAll() {
   renderMall();
   renderRecords();
   renderAdmin();
+  renderBreakdown();
   updatePointsDisplay();
   updateDailySummary();
 }
@@ -944,7 +979,23 @@ function renderRecords() {
         <div class="record-date">${fmtTs(r.ts)} · 余额 ${r.balance}分</div>
       </div>
       <div class="record-points">-${r.points}</div>
+      <button class="r-btn del" onclick="deleteRecord(${r.ts})">🗑️</button>
     </div>`).join('');
+}
+
+async function deleteRecord(ts) {
+  if (!confirm('确定删除这条兑换记录吗？删除后积分会自动返还。')) return;
+  try {
+    const r = await api('record-delete', { ts });
+    state.balance = r.balance;
+    state.records = r.records;
+    state.breakdown.spent = r.records.reduce((a, x) => a + (Number(x.points) || 0), 0);
+    renderRecords();
+    renderBreakdown();
+    renderMall();
+    updatePointsDisplay();
+    showToast('✅ 记录已删除，积分已返还');
+  } catch (e) { showToast('❌ ' + e.message); }
 }
 
 // ===== 管理页 =====
