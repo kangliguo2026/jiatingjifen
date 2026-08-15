@@ -1,7 +1,7 @@
 {
   "name": "jiatingjifen",
   "version": "1.0.0",
-  "description": "喜宝家庭奖惩积分系统 - Netlify Functions + Blobs",
+  "description": "小朋友家庭奖惩积分系统 - Netlify Functions + Blobs",
   "type": "module",
   "scripts": {
     "dev": "netlify dev",
