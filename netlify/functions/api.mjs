@@ -136,6 +136,33 @@ async function getDays(st) {
   return days;
 }
 
+// 初始积分（首次未存储时，从旧 balance 反推迁移）
+async function getInitial(st) {
+  const raw = await st.get('initial');
+  let init = (raw == null || raw === '') ? NaN : Number(raw);
+  if (!Number.isFinite(init)) {
+    const days = await getDays(st);
+    const records = await getJson(st, 'records', []);
+    let daySum = 0;
+    for (const d of Object.values(days)) daySum += sumObj(d.rewards) + sumObj(d.punishes);
+    const spent = records.reduce((a, r) => a + (Number(r.points) || 0), 0);
+    init = (await getBalance(st)) - daySum + spent;
+    await st.set('initial', String(init));
+  }
+  return init;
+}
+
+// 积分总额 = 初始积分 + 每日积分余额累计（奖励-惩罚） - 已兑换商品消耗
+async function computeBalance(st) {
+  const init = await getInitial(st);
+  const days = await getDays(st);
+  const records = await getJson(st, 'records', []);
+  let total = init;
+  for (const d of Object.values(days)) total += sumObj(d.rewards) + sumObj(d.punishes);
+  const spent = records.reduce((a, r) => a + (Number(r.points) || 0), 0);
+  return total - spent;
+}
+
 const sumObj = (obj) => Object.values(obj || {}).reduce(
   (a, v) => (typeof v === 'number' && Number.isFinite(v) ? a + v : a), 0);
 
@@ -162,6 +189,7 @@ export default async (req) => {
       if (password.length < 4) return json({ error: '密码至少需要4位' }, 400);
       const salt = crypto.randomBytes(8).toString('hex');
       await st.set('auth', JSON.stringify({ salt, hash: hashPw(password, salt) }));
+      await st.set('initial', String(Number(body.initialBalance) || 0));
       await st.set('balance', String(Number(body.initialBalance) || 0));
       await st.set('config', JSON.stringify(DEFAULT_CONFIG));
       await st.set('records', JSON.stringify([]));
@@ -204,7 +232,7 @@ export default async (req) => {
 
     if (method === 'GET' && path === '/data') {
       const config = await getJson(st, 'config', DEFAULT_CONFIG);
-      const balance = await getBalance(st);
+      const balance = await computeBalance(st);
       const records = await getJson(st, 'records', []);
       const days = await getDays(st);
       return json({ config, balance, records, days });
@@ -225,11 +253,8 @@ export default async (req) => {
       const rewards = clean(body.rewards);
       const punishes = clean(body.punishes);
       const key = 'day:' + date;
-      const old = await getJson(st, key, { rewards: {}, punishes: {} });
-      const delta = (sumObj(rewards) + sumObj(punishes)) - (sumObj(old.rewards) + sumObj(old.punishes));
       await st.set(key, JSON.stringify({ rewards, punishes }));
-      const balance = (await getBalance(st)) + delta;
-      await st.set('balance', String(balance));
+      const balance = await computeBalance(st);
       return json({ ok: true, balance });
     }
 
@@ -241,10 +266,9 @@ export default async (req) => {
       if (!item) return json({ error: '兑换项目不存在' }, 400);
       const cost = item.points == null ? Number(body.cost) : Number(item.points);
       if (!Number.isFinite(cost) || cost < 0) return json({ error: '请输入有效的兑换积分' }, 400);
-      let balance = await getBalance(st);
+      let balance = await computeBalance(st);
       if (cost > balance) return json({ error: '积分不足，当前余额 ' + balance }, 400);
       balance -= cost;
-      await st.set('balance', String(balance));
       const records = await getJson(st, 'records', []);
       records.unshift({
         name: item.name, icon: item.icon || '🎁',
