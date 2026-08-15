@@ -232,10 +232,33 @@ export default async (req) => {
 
     if (method === 'GET' && path === '/data') {
       const config = await getJson(st, 'config', DEFAULT_CONFIG);
-      const balance = await computeBalance(st);
-      const records = await getJson(st, 'records', []);
+      const initial = await getInitial(st);
       const days = await getDays(st);
-      return json({ config, balance, records, days });
+      const records = await getJson(st, 'records', []);
+      let daySum = 0;
+      for (const d of Object.values(days)) daySum += sumObj(d.rewards) + sumObj(d.punishes);
+      const spent = records.reduce((a, r) => a + (Number(r.points) || 0), 0);
+      const balance = initial + daySum - spent;
+      return json({ config, balance, records, days, breakdown: { initial, daySum, spent } });
+    }
+
+    if (method === 'POST' && path === '/initial') {
+      const body = await req.json().catch(() => ({}));
+      const v = Number(body.initial);
+      if (!Number.isFinite(v)) return json({ error: '初始积分格式错误' }, 400);
+      await st.set('initial', String(v));
+      return json({ ok: true, balance: await computeBalance(st) });
+    }
+
+    if (method === 'POST' && path === '/record-delete') {
+      const body = await req.json().catch(() => ({}));
+      const ts = Number(body.ts);
+      const records = await getJson(st, 'records', []);
+      const idx = records.findIndex(r => Number(r.ts) === ts);
+      if (idx === -1) return json({ error: '记录不存在' }, 400);
+      records.splice(idx, 1);
+      await st.set('records', JSON.stringify(records));
+      return json({ ok: true, balance: await computeBalance(st), records });
     }
 
     if (method === 'POST' && path === '/day') {
