@@ -471,12 +471,17 @@ body {
 <!-- 管理 -->
 <div class="page" id="page-admin">
   <div class="pw-card" style="margin-top:14px">
-    <h3>🧮 积分计算明细</h3>
-    <div id="breakdownBox" style="font-size:14px;line-height:1.9"></div>
+    <h3>✏️ 修正初始积分</h3>
     <div style="display:flex;gap:8px;margin-top:8px">
       <input type="number" id="initialInput" placeholder="初始积分" style="flex:1">
       <button onclick="saveInitial()" style="width:auto;padding:0 14px">修正初始积分</button>
     </div>
+  </div>
+  <div class="pw-card">
+    <h3>🔒 修改家庭密码</h3>
+    <input type="password" id="oldPw" placeholder="原密码">
+    <input type="password" id="newPw" placeholder="新密码（至少4位）">
+    <button onclick="changePassword()">保存新密码</button>
   </div>
   <div class="admin-tabs">
     <div class="admin-tab active" data-tab="rewards" onclick="switchAdminTab('rewards')">奖励项目</div>
@@ -485,12 +490,6 @@ body {
   </div>
   <div id="adminList"></div>
   <button class="admin-add" id="adminAddBtn" onclick="openEditForm(null)">＋ 添加项目</button>
-  <div class="pw-card">
-    <h3>🔒 修改家庭密码</h3>
-    <input type="password" id="oldPw" placeholder="原密码">
-    <input type="password" id="newPw" placeholder="新密码（至少4位）">
-    <button onclick="changePassword()">保存新密码</button>
-  </div>
 </div>
 
 <!-- 底部导航 -->
@@ -596,12 +595,6 @@ async function loadAll() {
 
 function renderBreakdown() {
   const b = state.breakdown || {};
-  const dayCount = Object.keys(state.days || {}).length;
-  document.getElementById('breakdownBox').innerHTML =
-    `初始积分 <strong>${b.initial ?? 0}</strong> 分<br>` +
-    `＋ ${dayCount}天每日余额累计 <strong>${b.daySum ?? 0}</strong> 分<br>` +
-    `－ 已兑换商品 <strong>${b.spent ?? 0}</strong> 分<br>` +
-    `＝ 积分总额 <strong style="color:var(--gold)">${state.balance}</strong> 分`;
   document.getElementById('initialInput').value = b.initial ?? 0;
 }
 
