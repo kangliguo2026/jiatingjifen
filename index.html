@@ -92,9 +92,11 @@ body {
   background: var(--bg);
   border-radius: 24px 24px 0 0;
 }
-.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.header-top { position: relative; display: flex; justify-content: center; align-items: center; margin-bottom: 14px; }
 .header-title { font-size: 18px; font-weight: 700; }
 .header-logout {
+  position: absolute;
+  right: 0;
   font-size: 13px;
   background: rgba(255,255,255,0.2);
   padding: 4px 12px;
@@ -410,10 +412,7 @@ body {
 <div class="header">
   <div class="header-top">
     <div class="header-title">小朋友家庭积分</div>
-    <div style="display:flex;gap:8px;align-items:center">
-      <div class="header-date" id="todayDate"></div>
-      <div class="header-logout" onclick="doLogout()">退出</div>
-    </div>
+    <div class="header-logout" onclick="doLogout()">退出</div>
   </div>
   <div class="points-display">
     <div class="points-label" id="pointsLabel">当日积分余额</div>
@@ -613,7 +612,6 @@ async function saveInitial() {
 }
 
 function renderAll() {
-  renderDate();
   renderDateBars();
   renderRewardList();
   renderPunishList();
@@ -675,11 +673,6 @@ document.getElementById('pwInput').addEventListener('keydown', e => {
 });
 
 // ===== 渲染：头部 =====
-function renderDate() {
-  const d = new Date();
-  document.getElementById('todayDate').textContent =
-    `${d.getMonth()+1}月${d.getDate()}日 周${dowNames[d.getDay()]}`;
-}
 
 let curPage = 'reward';
 
