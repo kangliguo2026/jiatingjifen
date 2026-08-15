@@ -1,0 +1,4 @@
+node_modules/
+.netlify/
+.netlify.blobs/
+.DS_Store
